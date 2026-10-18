@@ -107,3 +107,10 @@ export async function fsList(collection) {
     return out;
   } catch (e) { fsState = `unavailable (${e.message})`; return null; }
 }
+
+export async function fsDelete(collection, id) {
+  try {
+    const res = await fetch(`${await base()}/${collection}/${encodeURIComponent(id)}`, { method: "DELETE", headers: { authorization: `Bearer ${await token()}` } });
+    return res.ok;
+  } catch { return false; }
+}

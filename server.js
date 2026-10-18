@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { todaysQueue } from "./server/data.js";
 import { score, recommend, simulate, DEFAULT_RULES, ACTION_LABEL, WEIGHTS } from "./server/engine.js";
 import { checkAddress, draftMessage, agentInstructions, agentReply, analyzeCall } from "./server/ai.js";
-import { geminiReady, liveToken, fsSet, fsList, firestoreState, TEXT_MODEL, LIVE_MODEL } from "./server/google.js";
+import { geminiReady, liveToken, fsSet, fsList, fsDelete, firestoreState, TEXT_MODEL, LIVE_MODEL } from "./server/google.js";
 
 const ROOT = fileURLToPath(new URL("./public", import.meta.url));
 const PORT = process.env.PORT || 8080;
@@ -100,7 +100,7 @@ const routes = [
     const o = get(m[1]);
     const kind = b.kind === "token" ? "token" : "prepaid";
     const result = await draftMessage(o, kind, rules);
-    const v = await update(o.id, { message: result }, { type: kind === "token" ? "token_request" : "prepaid_nudge", detail: "WhatsApp message drafted" });
+    const v = await update(o.id, { message: result, ...(o.status === "open" ? { status: "offer_sent" } : {}) }, { type: kind === "token" ? "token_request" : "prepaid_nudge", detail: `${kind === "token" ? "Token request" : "Prepaid offer"} sent on WhatsApp (Gemini draft)` });
     return { result, order: v };
   }],
 
@@ -117,11 +117,49 @@ const routes = [
   }],
 
   ["POST", /^\/api\/orders\/([\w-]+)\/status$/, async (m, b) => {
-    const ok = ["open", "shipped", "held"]; if (!ok.includes(b.status)) throw { code: 400, message: "Unknown status" };
+    const ok = ["open", "shipped", "held", "call_queued"]; if (!ok.includes(b.status)) throw { code: 400, message: "Unknown status" };
     get(m[1]);
     return update(m[1], { status: b.status }, { type: "status", detail: `Marked ${b.status}` });
   }],
 
+
+  // Bulk actions from the order desk. Gemini work runs 4 at a time.
+  ["POST", /^\/api\/bulk$/, async (m, b) => {
+    const ids = (Array.isArray(b.ids) ? b.ids : []).filter(id => find(id)).slice(0, 60);
+    const action = String(b.action || "");
+    const ACTIONS = ["recommended", "prepaid", "token", "address", "call_queue", "ship", "hold", "reopen"];
+    if (!ACTIONS.includes(action)) throw { code: 400, message: "Unknown bulk action" };
+    const results = [];
+    const one = async (id) => {
+      const o = get(id);
+      let kind = action;
+      if (action === "recommended") kind = { prepaid_nudge: "prepaid", token: "token", address_fix: "address", call: "call_queue", ship: "ship" }[o.action] || "skip";
+      try {
+        if (kind === "prepaid" || kind === "token") {
+          if (o.payment !== "COD") return results.push({ id, skipped: "already prepaid" });
+          const msg = await draftMessage(o, kind, rules);
+          await update(id, { message: msg, ...(o.status === "open" ? { status: "offer_sent" } : {}) }, { type: kind === "token" ? "token_request" : "prepaid_nudge", detail: `${kind === "token" ? "Token request" : "Prepaid offer"} sent on WhatsApp (bulk, Gemini draft)` });
+        } else if (kind === "address") {
+          const r = await checkAddress(o);
+          const patch = { addressCheck: r };
+          if (r.quality === "weak" && r.normalized) Object.assign(patch, { address: r.normalized, addressFixed: true });
+          await update(id, patch, { type: "address_check", detail: `Bulk address check: ${r.quality}${patch.addressFixed ? ", cleaned" : ""}` });
+        } else if (kind === "call_queue") {
+          await update(id, { status: "call_queued" }, { type: "status", detail: "Queued for Gemini voice call" });
+        } else if (kind === "ship") {
+          await update(id, { status: "shipped" }, { type: "status", detail: "Marked shipped (bulk)" });
+        } else if (kind === "hold") {
+          await update(id, { status: "held" }, { type: "status", detail: "Held before dispatch (bulk)" });
+        } else if (kind === "reopen") {
+          await update(id, { status: "open" }, { type: "status", detail: "Reopened" });
+        } else return results.push({ id, skipped: "control group" });
+        results.push({ id, ok: true, kind });
+      } catch (e) { results.push({ id, error: e.message }); }
+    };
+    const queue = [...ids];
+    await Promise.all(Array.from({ length: 4 }, async () => { while (queue.length) await one(queue.shift()); }));
+    return { results, orders: BASE.map(view) };
+  }],
   ["POST", /^\/api\/orders\/([\w-]+)\/call-session$/, async (m) => {
     const o = get(m[1]);
     const instructions = agentInstructions(o, o, o.action, rules, o.addressCheck);
@@ -156,6 +194,15 @@ const routes = [
     return { result: r, order: v };
   }],
 
+  // Demo reset: clears today's order changes and the activity log (rules are kept). POST /api/admin/reset?confirm=yes
+  ["POST", /^\/api\/admin\/reset$/, async (m, b, url) => {
+    if (url.searchParams.get("confirm") !== "yes") throw { code: 400, message: "Add ?confirm=yes" };
+    const [o, a] = await Promise.all([fsList("orders"), fsList("actions")]);
+    await Promise.all([...(o || []).map(d => fsDelete("orders", d.id)), ...(a || []).map(d => fsDelete("actions", d.id))]);
+    overlay.clear(); log.length = 0;
+    return { ok: true, cleared: { orders: o?.length || 0, actions: a?.length || 0 } };
+  }],
+
   ["GET", /^\/api\/rules$/, async () => ({ rules, defaults: DEFAULT_RULES })],
   ["PUT", /^\/api\/rules$/, async (m, b) => {
     const n = (k, lo, hi) => Math.min(hi, Math.max(lo, Math.round(Number(b[k] ?? rules[k]))));
@@ -178,6 +225,7 @@ const routes = [
         calls: live.filter(o => o.callResult).length, confirmed: tally("confirmed") + tally("rescheduled"),
         cancelled: tally("cancelled"), converted: tally("converted_prepaid"), tokenPaid: tally("token_paid"), held: tally("held"),
         addressFixed: live.filter(o => o.addressFixed).length,
+        offersSent: live.filter(o => o.message).length, callQueued: tally("call_queued"), shipped: tally("shipped"),
       },
       log: log.slice(0, 25),
       rules,
@@ -191,7 +239,7 @@ const server = http.createServer(async (req, res) => {
   for (const [method, re, fn] of routes) {
     const m = url.pathname.match(re);
     if (m && req.method === method) {
-      try { return send(res, 200, await fn(m, method === "GET" ? {} : await body(req))); }
+      try { return send(res, 200, await fn(m, method === "GET" ? {} : await body(req), url)); }
       catch (e) { console.error(e); return send(res, e.code || 500, { error: e.message || "Something went wrong" }); }
     }
   }
