@@ -125,12 +125,10 @@ docs/                flow diagram and project overview
 
 - All data is **synthetic**: the brand (Saanjh Fashion), customers, phone numbers and orders are made up and generated from fixed seeds.
 - The impact dashboard **simulates** 30 days of outcomes on 4,000 synthetic orders, using response-rate assumptions that are shown on the page. The live queue (36 orders) is real app state: calls, messages and address fixes there are performed by Gemini and stored in Firestore.
-- WhatsApp messages are drafted by Gemini and shown as previews. Sending needs the WhatsApp Business API, which is future work.
 - The voice call runs in the browser so judges can try it. Placing real phone calls (for example through a telephony provider bridged to Gemini Live) is future work.
 
 ## Future work
 
-- Real outbound phone calls and WhatsApp delivery
 - Train the score on a brand's own order history; per-brand calibration
 - Follow-up after a failed delivery attempt (NDR): reschedule calls the same day
 - Courier and checkout integrations (Shopify, Shiprocket and similar)
@@ -138,7 +136,7 @@ docs/                flow diagram and project overview
 
 ## Team
 
-Prompt Avengers: Harshvardhan Singh, Ajay Kumar
+Prompt Avengers: Apoorv Jain, Harshvardhan Singh, Ajay Kumar
 
 ## License
 
