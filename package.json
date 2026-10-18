@@ -1,0 +1,10 @@
+{
+  "name": "rto-shield",
+  "version": "1.0.0",
+  "description": "Predict and prevent return-to-origin (RTO) on e-commerce orders with Gemini.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=20" },
+  "license": "MIT"
+}

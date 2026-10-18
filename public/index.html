@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RTO Shield</title>
+<meta name="description" content="Predict and prevent return-to-origin on e-commerce orders with Gemini.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230E6F63'/><path d='M9 17l5 5 9-11' stroke='white' stroke-width='3.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@112..125,600;112..125,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="top">
+  <div class="top-in">
+    <a class="logo" href="#orders" aria-label="RTO Shield home">
+      <svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M9 17l5 5 9-11" stroke="var(--on-accent)" stroke-width="3.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span><b>RTO Shield</b><small id="brandline">Saanjh Fashion · dispatch desk</small></span>
+    </a>
+    <nav class="tabs" role="tablist">
+      <a href="#orders" role="tab" data-tab="orders">Orders</a>
+      <a href="#rules" role="tab" data-tab="rules">Rules</a>
+      <a href="#impact" role="tab" data-tab="impact">Impact</a>
+      <a href="#about" role="tab" data-tab="about">How it works</a>
+    </nav>
+    <div class="health" id="health"></div>
+  </div>
+</header>
+
+<main>
+  <!-- ORDERS -->
+  <section id="tab-orders" class="tab" hidden>
+    <div class="strip" id="strip"></div>
+    <div class="orders-grid">
+      <div class="orders-left">
+        <div class="filters" id="filters" role="toolbar" aria-label="Filter orders"></div>
+        <div class="tbl-wrap">
+          <table class="orders">
+            <thead><tr><th>Order</th><th>Customer</th><th>Payment</th><th class="num">Value</th><th>Delivery probability</th><th>Reasons</th><th>Next action</th><th>Status</th></tr></thead>
+            <tbody id="order-rows"></tbody>
+          </table>
+        </div>
+        <p class="fine">Sample data: 36 made-up orders for a fictional brand. Scores come from the RTO Shield risk model; actions use Gemini.</p>
+      </div>
+      <aside class="detail" id="detail" aria-live="polite"></aside>
+    </div>
+  </section>
+
+  <!-- RULES -->
+  <section id="tab-rules" class="tab" hidden>
+    <div class="page-head">
+      <h1>Action rules</h1>
+      <p>Set which orders get which action. Changes preview instantly against today's queue and the 30-day simulation, then apply when you save.</p>
+    </div>
+    <div class="rules-grid">
+      <form id="rules-form" class="card rules-form" autocomplete="off"></form>
+      <div class="rules-side">
+        <div class="card" id="rules-queue"></div>
+        <div class="card" id="rules-sim"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- IMPACT -->
+  <section id="tab-impact" class="tab" hidden>
+    <div class="page-head">
+      <h1>Impact</h1>
+      <p>Risky orders we acted on, compared with a control group we left untouched. The gap is the impact.</p>
+    </div>
+    <div id="impact"></div>
+  </section>
+
+  <!-- ABOUT -->
+  <section id="tab-about" class="tab" hidden>
+    <div class="page-head">
+      <h1>How RTO Shield works</h1>
+      <p>Every order, COD or prepaid, gets a delivery probability and the reasons behind it. Rules pick an action, Gemini carries it out, and the dashboard measures the result against a control group.</p>
+    </div>
+    <div class="about" id="about"></div>
+  </section>
+</main>
+
+<!-- CALL OVERLAY -->
+<div class="overlay" id="call" hidden role="dialog" aria-modal="true" aria-labelledby="call-title">
+  <div class="call-box">
+    <div class="phone">
+      <div class="ph-top"><span class="dot" id="call-dot"></span><span id="call-state">Ready</span><span class="timer mono" id="call-timer">00:00</span></div>
+      <div class="ph-who">
+        <div class="avatar" id="call-avatar">S</div>
+        <h2 id="call-title">Customer</h2>
+        <p class="mono" id="call-sub"></p>
+      </div>
+      <div class="meter" aria-hidden="true"><i id="call-meter"></i></div>
+      <p class="ph-note" id="call-note">Gemini Live will speak as Riya from the brand. You play the customer: talk into your mic. Headphones work best.</p>
+      <div class="ph-actions">
+        <button class="btn primary" id="call-start">Start voice call</button>
+        <button class="btn danger" id="call-end" hidden>End call</button>
+        <button class="btn ghost" id="call-text">Use text instead</button>
+        <button class="btn ghost" id="call-close">Close</button>
+      </div>
+    </div>
+    <div class="transcript">
+      <div class="tr-head"><span class="k">Live transcript</span><span class="k" id="call-mode"></span></div>
+      <div class="tr-body" id="call-lines"></div>
+      <form class="tr-input" id="call-form" hidden>
+        <label class="sr" for="call-input">Your reply as the customer</label>
+        <input id="call-input" placeholder="Reply as the customer, e.g. Haan, mujhe chahiye…" autocomplete="off">
+        <button class="btn primary" type="submit">Send</button>
+      </form>
+      <div class="tr-result" id="call-result" hidden></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="/live.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>

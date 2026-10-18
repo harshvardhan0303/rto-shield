@@ -1,0 +1,419 @@
+<title>RTO Shield</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@112..125,600;112..125,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a single reading column (max 1040px) styled like a dispatch desk — shipping-label cards, AWB-style mono data, status stamps. */
+:root{
+  --bg:#F3F5F4; --surface:#FFFFFF; --ink:#13232B; --muted:#56656C; --line:#D5DCDA;
+  --accent:#0E6F63; --accent-soft:#DDEFEB;
+  --warn:#A8620F; --warn-soft:#F7EAD7;
+  --crit:#AE3329; --crit-soft:#F6E0DD;
+  --good:#1F7A3E; --good-soft:#DDF0E2;
+  --f-display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F181C; --surface:#162328; --ink:#E6EEEC; --muted:#9AAAA8; --line:#2A3A40;
+  --accent:#4FC2AF; --accent-soft:#173A36;
+  --warn:#E3A452; --warn-soft:#3A2D19;
+  --crit:#EE7D72; --crit-soft:#3D2220;
+  --good:#6BCB8B; --good-soft:#1A3424; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F181C; --surface:#162328; --ink:#E6EEEC; --muted:#9AAAA8; --line:#2A3A40;
+  --accent:#4FC2AF; --accent-soft:#173A36;
+  --warn:#E3A452; --warn-soft:#3A2D19;
+  --crit:#EE7D72; --crit-soft:#3D2220;
+  --good:#6BCB8B; --good-soft:#1A3424; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 64px}
+.wrap{max-width:1040px;margin:0 auto}
+h1,h2,h3{font-family:var(--f-display);font-stretch:118%;line-height:1.08;text-wrap:balance;margin:0}
+h2{font-size:clamp(26px,3.6vw,34px);font-weight:800;letter-spacing:-.01em}
+h3{font-size:18px;font-weight:600}
+p{margin:0}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);font-weight:600}
+.lead{font-size:18px;color:var(--muted);max-width:62ch}
+section{padding-block:56px;border-top:1px solid var(--line);display:grid;gap:24px}
+.sec-head{display:grid;gap:10px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+
+/* Hero */
+.hero{padding-block:56px 48px;display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:40px;align-items:center}
+.hero h1{font-size:clamp(38px,6vw,64px);font-weight:800;letter-spacing:-.02em;margin-top:14px}
+.hero h1 em{font-style:normal;color:var(--accent)}
+.hero .lead{margin-top:18px}
+.tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
+.tag{font-family:var(--f-mono);font-size:12px;padding:5px 10px;border:1px solid var(--line);border-radius:4px;color:var(--muted);background:var(--surface)}
+
+/* Shipping label */
+.label{background:var(--surface);border:1.5px solid var(--ink);border-radius:6px;font-family:var(--f-mono);font-size:13px;position:relative;overflow:hidden}
+.label-row{display:flex;justify-content:space-between;gap:12px;padding:10px 14px;border-bottom:1px dashed var(--line)}
+.label-row:last-child{border-bottom:0}
+.label .k{color:var(--muted);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.label .v{font-weight:600;text-align:right}
+.bars{height:38px;margin:4px 14px 0;background:repeating-linear-gradient(90deg,var(--ink) 0 2px,transparent 2px 4px,var(--ink) 4px 5px,transparent 5px 8px,var(--ink) 8px 11px,transparent 11px 13px);opacity:.85}
+.stamp{position:absolute;right:14px;top:58px;transform:rotate(-8deg);border:2.5px solid var(--crit);color:var(--crit);font-family:var(--f-display);font-stretch:125%;font-weight:800;font-size:15px;padding:4px 10px;border-radius:4px;letter-spacing:.06em;background:var(--surface)}
+.label-caption{font-size:13px;color:var(--muted);margin-top:10px}
+
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.stat{background:var(--surface);padding:20px 18px;display:grid;gap:6px;align-content:start}
+.stat b{font-family:var(--f-display);font-stretch:112%;font-size:34px;font-weight:800;line-height:1}
+.stat span{font-size:14px;color:var(--muted)}
+.stat.hot b{color:var(--crit)}
+.src{font-size:12.5px;color:var(--muted)}
+.src a{color:inherit}
+.callout{background:var(--accent-soft);border-radius:8px;padding:18px 20px;max-width:none}
+.callout strong{font-family:var(--f-mono);font-weight:600}
+
+/* Flow */
+.flow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;counter-reset:step}
+.step{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:18px;display:grid;gap:8px;align-content:start;position:relative}
+.step .n{font-family:var(--f-mono);font-size:12px;color:var(--accent);font-weight:600}
+.step p{font-size:14.5px;color:var(--muted)}
+.step:not(:last-child)::after{content:"→";position:absolute;right:-12px;top:22px;width:12px;text-align:center;color:var(--muted);font-family:var(--f-mono)}
+
+/* Order desk (interactive) */
+.desk{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:16px;align-items:start}
+.queue{display:grid;gap:8px}
+.q{all:unset;cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:12px 14px;background:var(--surface);border:1px solid var(--line);border-radius:6px;font-family:var(--f-mono);font-size:13px}
+.q:hover{border-color:var(--muted)}
+.q:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.q[aria-selected="true"]{border-color:var(--ink);box-shadow:inset 3px 0 0 var(--ink)}
+.q .id{font-weight:600}
+.q .meta{color:var(--muted);font-size:12px;grid-column:1}
+.q .p{grid-row:1/3;grid-column:2;align-self:center;font-weight:600;font-size:15px}
+.detail{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:22px;display:grid;gap:18px;min-width:0}
+.d-top{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:flex-start}
+.d-top .mono{font-size:13px;color:var(--muted)}
+.gauge{display:grid;gap:6px;min-width:200px;flex:1;max-width:320px}
+.gauge .big{font-family:var(--f-display);font-stretch:112%;font-size:44px;font-weight:800;line-height:1}
+.gauge .track{height:8px;background:var(--line);border-radius:4px;overflow:hidden}
+.gauge .fill{height:100%;border-radius:4px;transition:width .35s ease}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px 18px;font-size:14px}
+.facts div{display:grid;gap:2px}
+.facts .k{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-family:var(--f-mono);font-size:12px;font-weight:600;padding:4px 8px;border-radius:4px;background:var(--warn-soft);color:var(--warn)}
+.chip.none{background:var(--good-soft);color:var(--good)}
+.action{border-radius:8px;padding:16px 18px;display:grid;gap:10px}
+.action .t{font-family:var(--f-display);font-stretch:112%;font-weight:600;font-size:18px}
+.action p{font-size:14.5px}
+.msg{background:var(--bg);border:1px solid var(--line);border-radius:10px 10px 10px 2px;padding:12px 14px;font-size:14px;max-width:46ch;white-space:pre-line}
+.msg-k{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.note{font-size:12.5px;color:var(--muted)}
+
+/* Tables */
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:640px;font-size:14.5px}
+th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+th{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--bg)}
+td code{font-family:var(--f-mono);font-size:12.5px;background:var(--warn-soft);color:var(--warn);padding:1px 6px;border-radius:3px}
+
+/* Levers */
+.levers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.lever{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:20px;display:grid;gap:10px;align-content:start}
+.lever .when{font-family:var(--f-mono);font-size:12px;color:var(--accent);font-weight:600}
+.lever p{font-size:15px;color:var(--muted)}
+
+/* Bands */
+.bands{display:grid;gap:8px}
+.band{display:grid;grid-template-columns:120px minmax(0,1fr);gap:16px;align-items:center;padding:12px 16px;background:var(--surface);border:1px solid var(--line);border-left-width:4px;border-radius:6px;font-size:15px}
+.band .r{font-family:var(--f-mono);font-weight:600}
+.band.c{border-left-color:var(--crit)} .band.w{border-left-color:var(--warn)} .band.g{border-left-color:var(--good)}
+
+/* Impact */
+.impact{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:start}
+.impact ul{margin:0;padding-left:18px;display:grid;gap:8px;font-size:15px}
+.cmp{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:20px;display:grid;gap:14px}
+.cmp-row{display:grid;grid-template-columns:110px minmax(0,1fr) 48px;gap:12px;align-items:center;font-size:14px}
+.cmp-row .bar{height:22px;border-radius:3px}
+.cmp-row .val{font-family:var(--f-mono);font-weight:600;text-align:right}
+
+/* Stack + plan */
+.stack{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.svc{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:18px;display:grid;gap:6px;align-content:start}
+.svc b{font-family:var(--f-mono);font-size:13px;font-weight:600}
+.svc span{font-size:14px;color:var(--muted)}
+.plan{display:grid;gap:0;border-left:2px solid var(--line);margin-left:6px}
+.slot{display:grid;grid-template-columns:120px minmax(0,1fr);gap:16px;padding:10px 0 10px 18px;position:relative;font-size:15px}
+.slot::before{content:"";position:absolute;left:-7px;top:16px;width:12px;height:12px;border-radius:50%;background:var(--bg);border:2px solid var(--muted)}
+.slot.key::before{background:var(--accent);border-color:var(--accent)}
+.slot .time{font-family:var(--f-mono);font-size:13px;color:var(--muted);padding-top:2px}
+.slot.key .what{font-weight:600}
+.out{font-size:14.5px;color:var(--muted)}
+footer{border-top:1px solid var(--line);padding-top:24px;font-size:13px;color:var(--muted);display:grid;gap:6px}
+footer a{color:inherit}
+
+@media (max-width:820px){
+  .hero,.desk,.impact{grid-template-columns:1fr}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .flow{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .step::after{display:none}
+  .stack{grid-template-columns:1fr 1fr}
+}
+@media (max-width:520px){
+  .levers,.stack,.flow{grid-template-columns:1fr}
+  .band,.slot{grid-template-columns:1fr;gap:4px}
+  .cmp-row{grid-template-columns:84px minmax(0,1fr) 44px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+
+<header class="hero">
+  <div>
+    <div class="eyebrow">AI Builder Cup 2026 · Retail &amp; Commerce · Team Prompt Avengers</div>
+    <h1>Stop the parcel <em>before</em> it comes back.</h1>
+    <p class="lead">RTO Shield scores every order, COD or prepaid, for the chance it returns to origin, says why, and lets Gemini act before dispatch: a voice call in the buyer's language, a nudge to pay upfront, or a fixed address. A dashboard proves the result against orders we left alone.</p>
+    <div class="tags">
+      <span class="tag">Gemini Live</span><span class="tag">Gemini Flash</span><span class="tag">Cloud Run</span><span class="tag">Firestore</span>
+    </div>
+  </div>
+  <div>
+    <div class="label" aria-label="Example shipping label for a returned order">
+      <div class="label-row"><span class="k">AWB</span><span class="v">7741 0938 2210</span></div>
+      <div class="bars" aria-hidden="true"></div>
+      <div class="label-row"><span class="k">Ship to</span><span class="v">Near Sharma ji dairy, gali no 3</span></div>
+      <div class="label-row"><span class="k">Pincode</span><span class="v">845401</span></div>
+      <div class="label-row"><span class="k">Payment</span><span class="v">COD · ₹1,899</span></div>
+      <div class="label-row"><span class="k">Attempts</span><span class="v">3 · customer not reachable</span></div>
+      <div class="label-row"><span class="k">Days in transit</span><span class="v">11</span></div>
+      <span class="stamp">RTO</span>
+    </div>
+    <p class="label-caption">A typical failure: vague address, unreachable buyer, COD. It ships, waits, and comes back.</p>
+  </div>
+</header>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">The problem</div>
+    <h2>A quarter of COD orders travel out and back for nothing</h2>
+    <p class="lead">The brand pays shipping both ways, repacks the product, and has stock stuck in transit for one to two weeks with no sale at the end.</p>
+  </div>
+  <div class="stats">
+    <div class="stat"><b>60–65%</b><span>of Indian e-commerce orders are cash on delivery</span></div>
+    <div class="stat hot"><b>~26%</b><span>of COD orders end in RTO, up to ~35% in some cities</span></div>
+    <div class="stat"><b>&lt;3%</b><span>RTO rate on prepaid orders, about a tenth of COD</span></div>
+    <div class="stat"><b>₹180–240</b><span>logistics cost of a single RTO, before lost sales</span></div>
+  </div>
+  <p class="src">Sources: ET Prime 2024 and Shipway FY25 via <a href="https://razorpay.com/blog/cash-on-delivery-and-the-challenges/">Razorpay</a> and <a href="https://shipping.amazon.in/blog/what-is-rto-how-to-reduce-return-to-origin">Amazon Shipping</a>. Bad addresses cause 18–24% of RTOs (bepragma.ai 2025). Acting works: GoKwik reports ₹130 Cr of RTO losses saved for brands in 2023 (<a href="https://cxotoday.com/media-coverage/gokwik-has-helped-ecommerce-brands-save-over-rs-130-cr-worth-of-rto-losses-in-2023/">CXOtoday</a>).</p>
+  <div class="callout">A brand shipping <strong>1,000 COD orders a day</strong> at 26% RTO loses about 260 orders × ₹200 = <strong>₹52,000 a day</strong>, roughly <strong>₹1.9 Cr a year</strong> in logistics alone.</div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">Who it is for</div>
+    <h2>The ops head at a brand with a high RTO rate</h2>
+    <p class="lead">D2C and product brands in fashion, footwear, beauty, home and electronics, selling into Tier-2 and Tier-3 India. Today they find out about a bad order when it comes back. RTO Shield gives them a queue of risky orders and an action for each, before the parcel leaves the warehouse. The shopper gets a short call or message in Hindi or English instead of a parcel they didn't want or couldn't receive.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">How it works</div>
+    <h2>Score, pick the action, act, measure</h2>
+  </div>
+  <div class="flow">
+    <div class="step"><span class="n">1 · SCORE</span><h3>Every new order</h3><p>Delivery probability from pincode history, payment mode, customer history, address quality and order pattern.</p></div>
+    <div class="step"><span class="n">2 · EXPLAIN</span><h3>Reasons, not just a number</h3><p>Each order carries reason codes such as <span class="mono">WEAK_ADDRESS</span> or <span class="mono">PAST_RTO</span>.</p></div>
+    <div class="step"><span class="n">3 · ACT</span><h3>Rules pick the action</h3><p>Probability band plus reason decides: Gemini call, prepaid or token nudge, address fix, or ship.</p></div>
+    <div class="step"><span class="n">4 · MEASURE</span><h3>Impact vs control</h3><p>5% of risky orders get no action. Their RTO rate is the baseline the dashboard compares against.</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">Preview · sample orders</div>
+    <h2>What the order desk will show</h2>
+    <p class="lead">Pick an order to see its score, the reasons behind it and the action RTO Shield takes. These are made-up sample orders; the real app runs the same logic on synthetic data in Firestore.</p>
+  </div>
+  <div class="desk">
+    <div class="queue" role="tablist" aria-label="Sample orders" id="queue"></div>
+    <div class="detail" id="detail" role="tabpanel" aria-live="polite"></div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">Actions</div>
+    <h2>The action follows the reason</h2>
+    <p class="lead">A discount does nothing for a wrong address, and a clean address does nothing for a buyer who no longer wants the product.</p>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Reason</th><th>Action</th><th>What Gemini does</th></tr></thead>
+      <tbody>
+        <tr><td>Low intent <code>NEW_CUSTOMER</code> <code>ORDER_ANOMALY</code>, any payment mode</td><td>Voice call to confirm the order</td><td>Gemini Live talks to the buyer in Hindi or English, then turns the call into a result (confirm, reschedule, cancel) plus sentiment</td></tr>
+        <tr><td><code>COD</code> with medium risk</td><td>Nudge to pay in full now, small discount</td><td>Writes a short WhatsApp message in the buyer's language with a pay link</td></tr>
+        <tr><td><code>COD</code> + <code>PAST_RTO</code>, very high risk</td><td>Token amount upfront (part-prepaid), or hold dispatch</td><td>Writes the token-payment request; flags the order for the ops team if unpaid</td></tr>
+        <tr><td><code>WEAK_ADDRESS</code>, COD or prepaid</td><td>Address fix</td><td>Rewrites the address into a clean format and confirms it on the call</td></tr>
+        <tr><td>Not home on delivery day</td><td>Reschedule</td><td>Captured on the call; new date saved to the order</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">Payment levers for COD</div>
+    <h2>Turn cash on delivery into money upfront</h2>
+    <p class="lead">Prepaid orders return under 3% of the time against about 26% for COD, so getting some money upfront is the strongest single lever. Which one we use depends on the customer.</p>
+  </div>
+  <div class="levers">
+    <div class="lever"><span class="when">MEDIUM-RISK COD</span><h3>Convert to prepaid</h3><p>Offer a small discount (for example 5%) to pay the full amount now. The order then behaves like a prepaid order.</p></div>
+    <div class="lever"><span class="when">HIGH-RTO CUSTOMER ON COD</span><h3>Collect a token amount</h3><p>Ask for a small part-payment (for example ₹99–199) before dispatch, with the rest on delivery. If it isn't paid, the order is held instead of shipped.</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">Rules screen</div>
+    <h2>The ops team sets the bands</h2>
+    <p class="lead">Rules live on the front end as probability bands, so a brand can tune them to its own margins. Default bands:</p>
+  </div>
+  <div class="bands">
+    <div class="band c"><span class="r">Below 40%</span><span>Gemini voice call (COD or prepaid), plus address fix on <span class="mono">WEAK_ADDRESS</span>. COD with past RTOs also gets a token-amount request.</span></div>
+    <div class="band w"><span class="r">40–65%</span><span>COD: WhatsApp nudge to pay in full now for a small discount. Prepaid: address check only.</span></div>
+    <div class="band g"><span class="r">Above 65%</span><span>Ship as normal.</span></div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">Impact dashboard</div>
+    <h2>Proof against a control group, not a status board</h2>
+  </div>
+  <div class="impact">
+    <ul>
+      <li><strong>Control group:</strong> 5% of risky orders, picked by order ID, get no action. Their RTO rate shows what would have happened.</li>
+      <li><strong>Headline:</strong> RTO % treated vs control, orders saved, ₹ saved (orders saved × ~₹200), COD converted to prepaid, token amounts collected.</li>
+      <li><strong>Breakdowns:</strong> results per action, call outcomes and sentiment, RTO by pincode tier.</li>
+      <li><strong>Data:</strong> outcomes are simulated on synthetic orders, and we say so in the demo.</li>
+    </ul>
+    <div class="cmp" aria-label="Layout of the treated versus control comparison, with example numbers">
+      <div class="msg-k">Layout preview · example numbers, not results</div>
+      <div class="cmp-row"><span>Control</span><div class="bar" style="width:100%;background:var(--crit)"></div><span class="val">31%</span></div>
+      <div class="cmp-row"><span>Treated</span><div class="bar" style="width:58%;background:var(--accent)"></div><span class="val">18%</span></div>
+      <p class="note">RTO rate among risky orders. The gap between the two bars is the impact RTO Shield can claim.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">Built on Google Cloud</div>
+    <h2>One app, four services</h2>
+  </div>
+  <div class="stack">
+    <div class="svc"><b>Gemini Live API</b><span>The in-browser voice call with the buyer, in Hindi or English</span></div>
+    <div class="svc"><b>Gemini Flash</b><span>Address check and rewrite, call result and sentiment, payment messages</span></div>
+    <div class="svc"><b>Cloud Run</b><span>Hosts the Next.js app, screens and API in one container</span></div>
+    <div class="svc"><b>Firestore</b><span>Orders, scores, rules, actions taken, call results</span></div>
+    <div class="svc"><b>Firebase</b><span>Optional hosting for the front end</span></div>
+    <div class="svc"><b>GitHub</b><span>Public repo with code, README and architecture diagram</span></div>
+  </div>
+  <p class="out"><strong>Out of scope tonight:</strong> real phone calls (judges test the browser call themselves), real WhatsApp sending, a trained ML model, follow-up after a failed delivery attempt, courier integrations. All built on synthetic data and fresh code.</p>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">Tonight · 18 Oct, IST</div>
+    <h2>Deployed by 9:15, submitted by 11:45</h2>
+  </div>
+  <div class="plan">
+    <div class="slot"><span class="time">3:30 – 4:00</span><span class="what">Google Cloud setup; app skeleton and synthetic orders</span></div>
+    <div class="slot"><span class="time">4:00 – 5:30</span><span class="what">Risk score, order desk, Firestore</span></div>
+    <div class="slot"><span class="time">5:30 – 7:30</span><span class="what">Gemini Live call, call result and sentiment, payment messages, address fix</span></div>
+    <div class="slot"><span class="time">7:30 – 8:30</span><span class="what">Rules screen and impact dashboard</span></div>
+    <div class="slot key"><span class="time">8:30 – 9:15</span><span class="what">Deploy to Cloud Run and test the live link</span></div>
+    <div class="slot"><span class="time">9:15 – 10:15</span><span class="what">Deck in the official template</span></div>
+    <div class="slot"><span class="time">10:15 – 11:15</span><span class="what">Demo video, 3 minutes max</span></div>
+    <div class="slot key"><span class="time">11:15 – 11:45</span><span class="what">README, description, submit</span></div>
+  </div>
+</section>
+
+<footer>
+  <span>RTO Shield · Prompt Avengers (Harshvardhan Singh, Ajay Kumar) · AI Builder Cup 2026</span>
+  <span>Market figures are from secondary sources and not audited. Sample orders on this page are made up.</span>
+</footer>
+</div>
+
+<script>
+const ORDERS = [
+  { id:"ORD-1042", pay:"COD", amt:1899, pin:"845401", city:"Motihari, BR", tier:"Tier 3", cust:"First order",
+    addr:"Near Sharma ji dairy, gali no 3", p:31, reasons:["HIGH_RISK_PINCODE","COD","NEW_CUSTOMER","WEAK_ADDRESS"],
+    band:"c", action:"Gemini voice call + address fix",
+    why:"Low intent and a landmark-only address. Gemini calls in Hindi to confirm the order and asks for the house number, lane and nearest landmark.",
+    msgK:"Call opening (Gemini Live, Hindi)", msg:"Namaste! Main RTO Shield ki taraf se bol rahi hoon. Aapne ₹1,899 ka order kiya hai — kya aap ise lena chahte hain? Aur delivery ke liye apna ghar ka number aur gali ka naam bata dijiye." },
+  { id:"ORD-1043", pay:"COD", amt:749, pin:"302017", city:"Jaipur, RJ", tier:"Tier 2", cust:"4 delivered, 0 RTO",
+    addr:"B-14, Malviya Nagar, Sector 7", p:58, reasons:["COD"],
+    band:"w", action:"WhatsApp: pay in full now, 5% off",
+    why:"A good customer whose only risk is COD. Paying now turns this into a prepaid order.",
+    msgK:"WhatsApp draft (Gemini, Hinglish)", msg:"Hi Priya! Aapka order ₹749 ka ready hai. Abhi UPI se pay karein aur ₹37 bachayein — sirf ₹712. Link: pay.example/1043" },
+  { id:"ORD-1044", pay:"COD", amt:2499, pin:"800020", city:"Patna, BR", tier:"Tier 2", cust:"2 past RTOs",
+    addr:"Flat 3B, Kankarbagh Colony", p:22, reasons:["COD","PAST_RTO","HIGH_RISK_PINCODE"],
+    band:"c", action:"Token amount ₹199 upfront, else hold",
+    why:"Two earlier orders came back. A small part-payment shows real intent; if it isn't paid, the order is held instead of shipped.",
+    msgK:"WhatsApp draft (Gemini, Hindi)", msg:"Namaste Rahul ji, aapka ₹2,499 ka order confirm karne ke liye ₹199 abhi pay karein. Baaki ₹2,300 delivery par. Link: pay.example/1044" },
+  { id:"ORD-1045", pay:"Prepaid", amt:1299, pin:"560034", city:"Bengaluru, KA", tier:"Metro", cust:"First order",
+    addr:"Koramangala 4th block, near the park", p:61, reasons:["WEAK_ADDRESS","NEW_CUSTOMER"],
+    band:"w", action:"Address fix (prepaid order)",
+    why:"Already paid, but the address has no building or flat number. Prepaid orders still fail at the door, so RTO Shield checks these too.",
+    msgK:"Gemini address check", msg:"Missing: building name, flat number.\nSuggested ask: \"Which building and flat number should we deliver to in Koramangala 4th Block?\"" },
+  { id:"ORD-1046", pay:"Prepaid", amt:899, pin:"110017", city:"New Delhi, DL", tier:"Metro", cust:"9 delivered, 0 RTO",
+    addr:"C-22, Malviya Nagar, 2nd floor", p:94, reasons:[],
+    band:"g", action:"Ship as normal",
+    why:"Prepaid, complete address, strong history. No action needed.", msgK:"", msg:"" }
+];
+const color = b => b==="c" ? "var(--crit)" : b==="w" ? "var(--warn)" : "var(--good)";
+const soft  = b => b==="c" ? "var(--crit-soft)" : b==="w" ? "var(--warn-soft)" : "var(--good-soft)";
+const inr = n => "₹" + n.toLocaleString("en-IN");
+const queue = document.getElementById("queue"), detail = document.getElementById("detail");
+
+function renderDetail(o){
+  detail.innerHTML = `
+    <div class="d-top">
+      <div><h3>${o.id}</h3><div class="mono">${o.pay} · ${inr(o.amt)} · ${o.pin} ${o.city}</div></div>
+      <div class="gauge">
+        <span class="msg-k">Delivery probability</span>
+        <span class="big mono" style="color:${color(o.band)}">${o.p}%</span>
+        <div class="track"><div class="fill" style="width:${o.p}%;background:${color(o.band)}"></div></div>
+      </div>
+    </div>
+    <div class="facts">
+      <div><span class="k">Customer</span><span>${o.cust}</span></div>
+      <div><span class="k">Pincode tier</span><span>${o.tier}</span></div>
+      <div><span class="k">Address</span><span>${o.addr}</span></div>
+    </div>
+    <div><div class="msg-k" style="margin-bottom:6px">Reasons</div>
+      <div class="chips">${o.reasons.length ? o.reasons.map(r=>`<span class="chip">${r}</span>`).join("") : `<span class="chip none">NO_RISK_FLAGS</span>`}</div></div>
+    <div class="action" style="background:${soft(o.band)}">
+      <span class="t" style="color:${color(o.band)}">${o.action}</span>
+      <p>${o.why}</p>
+      ${o.msg ? `<div class="msg-k">${o.msgK}</div><div class="msg">${o.msg}</div>` : ""}
+    </div>`;
+}
+function select(i){
+  [...queue.children].forEach((b,j)=>{ b.setAttribute("aria-selected", j===i ? "true" : "false"); b.tabIndex = j===i ? 0 : -1; });
+  renderDetail(ORDERS[i]);
+}
+ORDERS.forEach((o,i)=>{
+  const b = document.createElement("button");
+  b.className = "q"; b.id = "q-"+o.id; b.setAttribute("role","tab");
+  b.innerHTML = `<span class="id">${o.id}</span><span class="p" style="color:${color(o.band)}">${o.p}%</span><span class="meta">${o.pay} · ${inr(o.amt)} · ${o.pin}</span>`;
+  b.addEventListener("click",()=>select(i));
+  b.addEventListener("keydown",e=>{
+    if(e.key==="ArrowDown"||e.key==="ArrowUp"){ e.preventDefault(); const n=(i+(e.key==="ArrowDown"?1:-1)+ORDERS.length)%ORDERS.length; select(n); queue.children[n].focus(); }
+  });
+  queue.appendChild(b);
+});
+select(0);
+</script>
